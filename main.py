@@ -23,7 +23,7 @@ class DownloadRequest(BaseModel):
 def get_video_info(url: str):
     ydl_opts = {
         'quiet': True,
-        'no_warnings': True,
+        'no_warnings': True
     }
     
     # 쿠키 파일이 존재하면 적용 (봇 차단 우회용)
@@ -81,7 +81,7 @@ async def download_media(req: DownloadRequest, background_tasks: BackgroundTasks
         ydl_opts = {
             'outtmpl': outtmpl,
             'quiet': True,
-            'no_warnings': True,
+            'no_warnings': True
         }
         
         # 쿠키 파일이 존재하면 적용 (봇 차단 우회용)
