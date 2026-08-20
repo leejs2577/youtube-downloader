@@ -3,5 +3,6 @@ temp_downloads/
 __pycache__/
 *.pyc
 .env
+cookies.txt
 .idea/
 .vscode/

@@ -45,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`/api/info?url=${encodeURIComponent(url)}`);
             if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                if (errorData.detail) throw new Error(errorData.detail);
                 throw new Error('정보를 불러오지 못했습니다.');
             }
             

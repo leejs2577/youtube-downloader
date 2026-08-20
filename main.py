@@ -6,6 +6,10 @@ import yt_dlp
 import os
 import uuid
 import asyncio
+import base64
+import binascii
+import tempfile
+from pathlib import Path
 
 app = FastAPI(title="YouTube Downloader API")
 
@@ -15,19 +19,60 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 TEMP_DIR = "temp_downloads"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
+COOKIES_ENV_NAME = "YTDLP_COOKIES_B64"
+RUNTIME_COOKIES_FILE = Path(tempfile.gettempdir()) / "ytdlp-cookies.txt"
+
+
+def get_cookiefile() -> str | None:
+    """Load production cookies from an environment secret, never the image."""
+    encoded_cookies = os.getenv(COOKIES_ENV_NAME, "").strip()
+    if encoded_cookies:
+        try:
+            cookies = base64.b64decode(encoded_cookies, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise RuntimeError(
+                f"{COOKIES_ENV_NAME} must be a valid base64-encoded Netscape cookie file."
+            ) from exc
+
+        if not cookies.lstrip().startswith(b"# Netscape HTTP Cookie File"):
+            raise RuntimeError(
+                f"{COOKIES_ENV_NAME} must contain a Netscape-format cookie file."
+            )
+
+        RUNTIME_COOKIES_FILE.write_bytes(cookies)
+        os.chmod(RUNTIME_COOKIES_FILE, 0o600)
+        return str(RUNTIME_COOKIES_FILE)
+
+    local_cookiefile = Path("cookies.txt")
+    return str(local_cookiefile) if local_cookiefile.exists() else None
+
+
+def build_ydl_options(**options):
+    cookiefile = get_cookiefile()
+    if cookiefile:
+        options["cookiefile"] = cookiefile
+    return options
+
+
+def user_facing_ytdlp_error(exc: Exception) -> str:
+    message = str(exc)
+    if "Sign in to confirm you're not a bot" in message or "Sign in to confirm youre not a bot" in message:
+        return (
+            "YouTube blocked this server request as automated traffic. "
+            "Set a current YTDLP_COOKIES_B64 Render environment variable, then redeploy."
+        )
+    return message
+
 class DownloadRequest(BaseModel):
     url: str
     format_type: str # "video" or "audio"
     resolution: str = "best" # e.g. "1080p", "720p", "best"
 
 def get_video_info(url: str):
-    ydl_opts = {
-        'quiet': True,
-        'no_warnings': True
-    }
+    ydl_opts = build_ydl_options(quiet=True, no_warnings=True)
     
     # 쿠키 파일이 존재하면 적용 (봇 차단 우회용)
-    if os.path.exists("cookies.txt"):
+    if not ydl_opts.get("cookiefile") and os.path.exists("cookies.txt"):
         ydl_opts['cookiefile'] = 'cookies.txt'
         
     try:
@@ -50,7 +95,7 @@ def get_video_info(url: str):
                 "resolutions": sorted_res
             }
     except Exception as e:
-        raise Exception(f"Failed to fetch video info: {str(e)}")
+        raise Exception(f"Failed to fetch video info: {user_facing_ytdlp_error(e)}") from e
 
 @app.get("/")
 def read_root():
@@ -78,14 +123,14 @@ async def download_media(req: DownloadRequest, background_tasks: BackgroundTasks
         file_id = str(uuid.uuid4())
         outtmpl = os.path.join(TEMP_DIR, f"{file_id}_%(title)s.%(ext)s")
         
-        ydl_opts = {
-            'outtmpl': outtmpl,
-            'quiet': True,
-            'no_warnings': True
-        }
+        ydl_opts = build_ydl_options(
+            outtmpl=outtmpl,
+            quiet=True,
+            no_warnings=True,
+        )
         
         # 쿠키 파일이 존재하면 적용 (봇 차단 우회용)
-        if os.path.exists("cookies.txt"):
+        if not ydl_opts.get("cookiefile") and os.path.exists("cookies.txt"):
             ydl_opts['cookiefile'] = 'cookies.txt'
             
         if req.format_type == "audio":
@@ -143,4 +188,4 @@ async def download_media(req: DownloadRequest, background_tasks: BackgroundTasks
         )
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Download failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Download failed: {user_facing_ytdlp_error(e)}") from e
