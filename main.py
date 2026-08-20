@@ -25,6 +25,11 @@ def get_video_info(url: str):
         'quiet': True,
         'no_warnings': True,
     }
+    
+    # 쿠키 파일이 존재하면 적용 (봇 차단 우회용)
+    if os.path.exists("cookies.txt"):
+        ydl_opts['cookiefile'] = 'cookies.txt'
+        
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -79,6 +84,10 @@ async def download_media(req: DownloadRequest, background_tasks: BackgroundTasks
             'no_warnings': True,
         }
         
+        # 쿠키 파일이 존재하면 적용 (봇 차단 우회용)
+        if os.path.exists("cookies.txt"):
+            ydl_opts['cookiefile'] = 'cookies.txt'
+            
         if req.format_type == "audio":
             ydl_opts['format'] = 'bestaudio/best'
             ydl_opts['postprocessors'] = [{
