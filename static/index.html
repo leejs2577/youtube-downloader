@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 다운로더</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>유튜브 다운로더</h1>
+            <p>유튜브 영상과 음원을 쉽게 다운로드 하세요.</p>
+        </header>
+        
+        <main>
+            <form id="downloadForm">
+                <div class="input-group">
+                    <label for="urlInput">유튜브 URL</label>
+                    <input type="url" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." required>
+                </div>
+
+                <div class="type-selector hidden">
+                    <label class="radio-label">
+                        <input type="radio" name="formatType" value="video">
+                        <span class="custom-radio"></span>
+                        영상 (MP4)
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="formatType" value="audio" checked>
+                        <span class="custom-radio"></span>
+                        음원 (MP3)
+                    </label>
+                </div>
+
+                <div class="input-group hidden" id="resolutionGroup">
+                    <label for="resolutionSelect">해상도</label>
+                    <select id="resolutionSelect">
+                        <option value="best">최고 화질 (자동)</option>
+                        <!-- Resolutions will be populated here -->
+                    </select>
+                </div>
+
+                <button type="submit" id="downloadBtn">다운로드 시작</button>
+            </form>
+
+            <div id="statusMessage" class="status-message hidden">
+                <div class="spinner"></div>
+                <p id="statusText">처리 중...</p>
+            </div>
+            
+            <div id="videoInfo" class="video-info hidden">
+                <img id="thumbnail" src="" alt="Thumbnail">
+                <h3 id="videoTitle"></h3>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>
